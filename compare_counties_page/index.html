@@ -1,0 +1,164 @@
+<div id="county_comparision">
+  <div id="clicked_county">
+    <h1 id="clicked_county_name">Clicked County:</h1>
+    <div id="clicked_county_attributes"></div>
+  </div>
+
+  <div id="highlighted_county">
+    <h1 id="highlighted_county_name">Highlighted County:</h1>
+  </div>
+
+  <div id="right_clicked_county">
+    <h1 id="right_clicked_county_name">Right Clicked County:</h1>
+    <div id="right_clicked_county_attributes"></div>
+  </div>
+</div>
+<style>
+  html, body {overflow: hidden}
+  #clicked_county {
+    float: left;
+  }
+
+  #highlighted_county {
+    float: left;
+    position: absolute;
+    left: 40%;
+  }
+
+  #right_clicked_county {
+    float: right;
+  }
+
+  .right_click_selected {
+    fill: red;
+  }
+
+  .left_click_selected {
+    fill: blue;
+  }
+
+  .county_attribute {
+    text-transform: capitalize;
+  }
+
+  path {
+    fill: #ccc;
+    stroke: #fff;
+    stroke-width: 0.1px;
+  }
+
+  path:not(.no-hover):hover {
+    fill: rgba(255, 0, 0, 0.2);
+  }
+</style>
+<body>
+  <script src="//d3js.org/d3.v3.min.js"></script>
+  <script src="//d3js.org/topojson.v1.min.js"></script>
+  <script>
+    // From https://stackoverflow.com/questions/196972/convert-string-to-title-case-with-javascript/44962866
+    String.prototype.toTitleCase = function () {
+    return this.replace(/[_]+/g, ' ');
+};
+    let width = "100%",
+      height = "100%";
+
+    let path = d3.geo.path();
+
+    let svg = d3
+      .select("body")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("viewBox", "280 180 150 150");
+    const attributes = [
+      "crime_count",
+      "income",
+      "poverty_rate",
+      "college_graduates",
+    ];
+    let url = "https://co-counties.s3.us-east-2.amazonaws.com/co_counties.json";
+    d3.json(url, function (error, topology) {
+      if (error) {
+        throw error;
+      }
+
+      let geojson = topojson.feature(topology, topology.objects.counties);
+
+      svg
+        .selectAll("path")
+        .data(geojson.features)
+        .enter()
+        .append("path")
+        .attr("d", path)
+        .on("click", function (d, i) {
+          handleCountyClick(d, i, "left", this);
+        })
+        .on("contextmenu", function (d, i) {
+          handleCountyClick(d, i, "right", this);
+        })
+        .on("mouseover", function (d, i) {
+          document.getElementById(
+            "highlighted_county_name"
+          ).innerText = `Highlighted County: ${d.properties.NAME}`;
+        });
+    });
+    const handleCountyClick = (d, i, clickType, _this) => {
+      clickTypeOptions = {
+        right: {
+          class: "right_click_selected",
+          div: "right_clicked_county",
+          text: "Right Clicked County",
+        },
+        left: {
+          class: "left_click_selected",
+          div: "clicked_county",
+          text: "Clicked County",
+        },
+      };
+      d3.event.preventDefault();
+      d3.selectAll(`.${clickTypeOptions[clickType].class}`).classed(
+        `${clickTypeOptions[clickType].class} no-hover`,
+        false
+      );
+      d3.select(_this).classed(
+        `${clickTypeOptions[clickType].class} no-hover`,
+        true
+      );
+      document.getElementById(
+        `${clickTypeOptions[clickType].div}_name`
+      ).innerText = `${clickTypeOptions[clickType].text}: ${d.properties.NAME} (loading)`;
+
+      Promise.all(
+        attributes.map((attribute) =>
+          fetch(
+            `https://0vpcemh4td.execute-api.us-east-2.amazonaws.com/main/counties/${d.properties.NAME}/${attribute}`
+          ).then((resp) => resp.json())
+        )
+      ).then((responses) => {
+        let html = "";
+        for (let i = 0; i < responses.length; i++) {
+          const response = responses[i][0];
+          console.log(response);
+          for (let key in response) {
+            if (key !== "county" && key !== "lat" && key !== "lon") {
+              const value = response[key];
+              console.log(key, key.toTitleCase());
+              html += `<li class='county_attribute'>${key.toTitleCase()}:${value}</li>`;
+            }
+          }
+        }
+        document.getElementById(
+          `${clickTypeOptions[clickType].div}_name`
+        ).innerText = `${clickTypeOptions[clickType].text}: ${d.properties.NAME}`;
+
+        // document.getElementById(
+        //   `${clickTypeOptions[clickType].div}_attributes`
+        // ).innerText = JSON.stringify(responses[0]);
+
+        document.getElementById(
+          `${clickTypeOptions[clickType].div}_attributes`
+        ).innerHTML = html;
+      });
+    };
+  </script>
+</body>
