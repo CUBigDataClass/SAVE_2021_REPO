@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Heatmaps</title>
+    <script src="https://polyfill.io/v3/polyfil.js?features=default"></script>
+    <style type="text/css">
+      #map {
+        height: 100%;
+        background: transparent url('https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/0.16.1/images/loader-large.gif') no-repeat center center;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      #floating-panel {
+        position: absolute;
+        top: 10px;
+        left: 25%;
+        z-index: 5;
+        background-color: #fff;
+        padding: 5px;
+        border: 1px solid #999;
+        text-align: center;
+        font-family: "Roboto", "sans-serif";
+        line-height: 30px;
+      }
+
+      #floating-panel {
+        background-color: rgb(13, 50, 63, 0.75);
+        border: 0px solid #999;
+        left: 25%;
+        padding: 10px;
+        position: absolute;
+        top: 10px;
+        z-index: 5;
+        border-radius: 30px;
+        transition: 0.3s;
+      }
+      #floating-panel:hover {
+        background-color: rgb(13, 50, 63, 1);
+      }
+
+      #button1 {
+        background-color: #ffffff;
+        border-bottom-left-radius: 12px;
+        border-top-left-radius: 12px;
+        border: none;
+        color: #d54f33;
+        margin-left: 4px;
+        font-family: "Verdana", "sans-serif";
+        padding: 5px 15px;
+        transition: 0.3s;
+        cursor: pointer;
+      }
+      #button2 {
+        background-color: #ffffff;
+        border: none;
+        color: #d54f33;
+        font-family: "Verdana", "sans-serif";
+        padding: 5px 15px;
+        transition: 0.3s;
+        cursor: pointer;
+      }
+      #button3 {
+        background-color: #ffffff;
+        border-bottom-right-radius: 12px;
+        border-top-right-radius: 12px;
+        border: none;
+        color: #d54f33;
+        margin-right: 4px;
+        font-family: "Verdana", "sans-serif";
+        padding: 5px 15px;
+        transition: 0.3s;
+        cursor: pointer;
+      }
+      #button1:hover {
+        background-color: #d54f33;
+        color: #ffffff;
+      }
+      #button2:hover {
+        background-color: #d54f33;
+        color: #ffffff;
+      }
+      #button3:hover {
+        background-color: #d54f33;
+        color: #ffffff;
+      }
+    </style>
+    <script>
+
+      let map, heatmap, incomeMap, poverty_rate_map, college_graduates_map;
+
+      function initMap() {
+        getPoints().then((data) => {
+          map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 7,
+            center: { lat: 39.11142, lng: -105.69915 },
+            mapTypeId: "terrain",
+          });
+          heatmap = new google.maps.visualization.HeatmapLayer({
+            data: data.crime,
+            map: map,
+          });
+
+          heatmap.set("radius", 20);
+          heatmap.set("maxIntensity", 5000); //Was 210 before
+
+          incomeMap = new google.maps.visualization.HeatmapLayer({
+            data: data.income,
+            map: map,
+          });
+
+          incomeMap.set("radius", 30);
+          const gradient = [
+            "rgba(0, 255, 255, 0)",
+            "rgba(0, 255, 255, 1)",
+            "rgba(0, 191, 255, 1)",
+            "rgba(0, 127, 255, 1)",
+            "rgba(0, 63, 255, 1)",
+            "rgba(0, 0, 255, 1)",
+            "rgba(0, 0, 223, 1)",
+            "rgba(0, 0, 191, 1)",
+            "rgba(0, 0, 159, 1)",
+            "rgba(0, 0, 127, 1)",
+            "rgba(63, 0, 91, 1)",
+            "rgba(127, 0, 63, 1)",
+            "rgba(191, 0, 31, 1)",
+            "rgba(255, 0, 0, 1)",
+          ];
+          incomeMap.set("gradient", gradient);
+
+
+          poverty_rate_map = new google.maps.visualization.HeatmapLayer({
+            data: data.poverty_rate,
+          });
+
+          poverty_rate_map.set("radius", 30);
+          const povertyGradient = [
+            "rgba(255, 0, 255, 0)",
+            "rgba(255, 0, 255, 1)",
+            "rgba(191, 0, 255, 1)",
+            "rgba(127, 0, 255, 1)",
+            "rgba(63, 0, 255, 1)",
+            "rgba(0, 0, 255, 1)",
+            "rgba(0, 0, 223, 1)",
+            "rgba(0, 0, 191, 1)",
+            "rgba(0, 0, 159, 1)",
+            "rgba(0, 0, 127, 1)",
+            "rgba(0, 63, 91, 1)",
+            "rgba(0, 127, 63, 1)",
+            "rgba(0, 191, 31, 1)",
+            "rgba(0, 255, 0, 1)",
+          ];
+          poverty_rate_map.set("gradient", povertyGradient);
+
+
+          college_graduates_map = new google.maps.visualization.HeatmapLayer({
+            data: data.college_graduates,
+          });
+
+          college_graduates_map.set("radius", 30);
+          const graduateGradient = [
+            "rgba(255, 255, 0, 0)",
+            "rgba(255, 255, 0, 1)",
+            "rgba(255, 191, 0, 1)",
+            "rgba(255, 127, 0, 1)",
+            "rgba(255, 63, 0, 1)",
+            "rgba(255, 0, 0, 1)",
+            "rgba(223, 0, 0, 1)",
+            "rgba(191, 0, 0, 1)",
+            "rgba(159, 0, 0, 1)",
+            "rgba(127, 0, 0, 1)",
+            "rgba(91, 0, 63, 1)",
+            "rgba(63, 0, 127, 1)",
+            "rgba(31, 0, 191, 1)",
+            "rgba(0, 0, 255, 1)",
+          ];
+          college_graduates_map.set("gradient", graduateGradient);
+
+        });
+      }
+
+      function toggleHeatmap() {
+        heatmap.setMap(heatmap.getMap() ? null : map);
+      }
+
+      function toggleincome() {
+        incomeMap.setMap(incomeMap.getMap() ? null : map);
+      }
+
+      function togglePoverty() {
+        poverty_rate_map.setMap(poverty_rate_map.getMap() ? null : map);
+      }
+
+      function toggleGraduates() {
+        college_graduates_map.setMap(college_graduates_map.getMap() ? null : map);
+      }
+
+      function changeOpacity() {
+        heatmap.set("opacity", heatmap.get("opacity") ? null : 200);
+      }
+
+      function getPoints() {
+        let crimes;
+        return Promise.all(
+          ["crime_count", "income", "poverty_rate", "college_graduates"].map((attribute) =>
+            fetch(
+              `https://0vpcemh4td.execute-api.us-east-2.amazonaws.com/main/counties/${attribute}`
+            ).then((resp) => resp.json())
+          )
+        ).then((responses) => {
+          const crimes = responses[0];
+          crime_points = [];
+          for (let i = 0; i < crimes.length; i++) {
+            crime_points.push({
+              location: new google.maps.LatLng(crimes[i].lat, crimes[i].lon),
+              weight: crimes[i].crime_count,
+            });
+          }
+
+          const income = responses[1];
+          const income_points = [];
+          for (let i = 0; i < income.length; i++) {
+            income_points.push({
+              location: new google.maps.LatLng(income[i].lat, income[i].lon),
+              weight: income[i].income,
+            });
+          }
+
+          const poverty_rate = responses[2];
+          const poverty_rate_points = [];
+          for (let i = 0; i < poverty_rate.length; i++) {
+            poverty_rate_points.push({
+              location: new google.maps.LatLng(poverty_rate[i].lat, poverty_rate[i].lon),
+              weight: poverty_rate[i].percent,
+            });
+          }
+
+          const college_graduates = responses[3];
+          const college_graduates_points = [];
+          for (let i = 0; i < college_graduates.length; i++) {
+            college_graduates_points.push({
+              location: new google.maps.LatLng(college_graduates[i].lat, college_graduates[i].lon),
+              weight: college_graduates[i].percent_college_graduates,
+            });
+          }
+          return { crime: crime_points, income: income_points, poverty_rate: poverty_rate_points, college_graduates: college_graduates_points };
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="floating-panel">
+      <button id="button1" onclick="toggleHeatmap()">Toggle Crime Map</button>
+      <button id="button2" onclick="toggleincome()">Toggle Local Income</button>
+      <button id="button2" onclick="togglePoverty()">Toggle Poverty Rate</button>
+      <button id="button2" onclick="toggleGraduates()">Toggle College Graduates</button>
+      <button id="button3" onclick="changeOpacity()">Change Opacity</button>
+    </div>
+    <div id="map"></div>
+
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDHTl941sTMGbUyVo3DjdhEja9FjNkICxM&callback=initMap&libraries=visualization&v=weekly"
+      async
+    ></script>
+  </body>
+</html>
